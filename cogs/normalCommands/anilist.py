@@ -1,21 +1,16 @@
 import nextcord, pprint
 from nextcord.ext import commands
 from datetime import datetime
-from classes.normalCommands.anilistClasses import *
+from classes.anilistClasses import *
 
 async def AnilistDB(connect):
     global sql
     sql = connect
-    return print("| -- Anilist DB is now online.")
+    return
  
 class Anilist(commands.Cog):
     def __init__(self, client):
         self.client = client
-
-    #|----------Print when cog has loaded----------|
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print("| -- Anilist Command is now online.")
 
     #|----------Connect Anilist----------|
     @commands.command(aliases=['anisetup', 'setani', 'setanilist'])

@@ -1,54 +1,32 @@
-import nextcord, random, asyncpraw, asyncio
+import nextcord, pprint, asyncpraw, asyncio
 from nextcord.ext import commands
+from nextcord import slash_command, Interaction, SlashOption, SelectOption
 from datetime import datetime
 from classes.generalClasses import *
-from nextcord import SelectOption
-timer = 0
+from cogs.normalCommands.general import RunTimes
 
-async def GeneralDB(connect):
+async def SLGeneralDB(connect):
     global sql
     sql = connect
     return
 
-#|----------Check how long the bot has been running----------|
-async def RunTimes(client):
-    global timer
-    await client.wait_until_ready()
-    while not client.is_closed():
-        await asyncio.sleep(1)
-        timer = timer + 1
-        RunTimes.timer = timer
-
-class General(commands.Cog):
+class SLGeneral(commands.Cog):
     def __init__(self, client):
         self.client = client
         self.reddit = asyncpraw.Reddit(client_id=col['Reddit']['ID'], client_secret=col['Reddit']['CLIENT_SECRET'], user_agent=col['Reddit']['USER_AGENT'])
-
+    
     #|----------Check Latency----------|
-    @commands.command()
-    async def ping(self, ctx):
-        global timer
-        await ctx.send(f"`🏓 Ping     :`\n> Client - {round(self.client.latency * 1000)}ms\n> Uptime - {returnTime(timer)}")
+    @slash_command("ping", "View Latency and Uptime for the Bot.")
+    async def ping(self, interaction: Interaction):
+        await interaction.send(f"`🏓 Ping     :`\n> Client - {round(self.client.latency * 1000)}ms\n> Uptime - {returnTime(RunTimes.timer)}")
 
-    #|----------Custom Help Command----------|
-    @commands.command()
-    async def help(self, interaction: nextcord.Interaction, commandName = None):
-        if commandName == None:
-            cogDict, cogs = {}, []
-            for command in self.client.commands:
-                if command.cog.qualified_name not in cogDict:
-                    cogDict[command.cog.qualified_name] = []
-                    cogs.append(SelectOption(label=f"{command.cog.qualified_name}"))
-
-                cogDict[command.cog.qualified_name].append(f'> **{str(command.name).capitalize()}**')
-            await interaction.send(view=HelpView(cogDict, cogs))
-        else:
-            pass
+    @slash_command("help", "Help Command!")
+    async def help(self, interaction: Interaction):
+        await interaction.send("Slash commands are different, will figure how to find them soon.")
 
     #|----------View User Avatar(s)----------|
-    @commands.command(aliases=['ava'])
-    async def avatar(self, interaction: nextcord.Interaction, member: nextcord.Member = None):
-        member = interaction.author if not member else member
+    @slash_command("avatar", "View Global and Guild avatar!")
+    async def avatar(self, interaction: Interaction, member: nextcord.Member):
         try: guildAvatar = member.guild_avatar.url
         except: guildAvatar = None
 
@@ -64,30 +42,20 @@ class General(commands.Cog):
             await interaction.send(embed=embed, view=AvatarViewer(memberAvatar, guildAvatar))
 
     #|----------View User Banner----------|
-    @commands.command()
-    async def banner(self, ctx, member: nextcord.Member = None):
-        member = ctx.author if not member else member
+    @slash_command("banner", "View your own or someones banner!")
+    async def banner(self, interaction: Interaction, member: nextcord.Member):
+        member = await self.client.fetch_user(member.id)
         try: member.banner.url
-        except: return await ctx.send(f"{member.display_name} has no banner. (Cannot fetch guild banners if that's what you're after.)")
+        except: return await interaction.send(f"{member.display_name} has no banner. (Cannot fetch guild banners if that's what you're after.)")
 
         embed = nextcord.Embed(colour=int(col['Miumi']['Colour'], 16) + 0x200)
         embed.set_image(url=member.banner.url)
-        await ctx.send(embed=embed)
-
-    #|----------View Guild Avatar----------|
-    @commands.command(aliases=['guildava', 'serveravatar', 'serverava'])
-    async def guildAvatar(self, ctx):
-        guild = ctx.guild
-        embed = nextcord.Embed(colour=int(col['Miumi']['Colour'], 16) + 0x200)
-        embed.set_image(url=guild.icon)
-        await ctx.send(embed=embed)
+        await interaction.send(embed=embed)
 
     #|----------View User Information----------|
-    @commands.command(aliases=['userinfo', 'infouser', 'information'])
-    async def info(self, ctx, member: nextcord.Member = None):
-        member = ctx.author if not member else member
-        try: fetchMember = await self.client.fetch_member(member.id)
-        except : fetchMember = None
+    @slash_command("info", "View information about someone or yourself!")
+    async def info(self, interaction: Interaction, member: nextcord.Member):
+        fetchMember = await self.client.fetch_user(member.id)
         activiesList = []
 
         grabRoles = [role for role in member.roles]
@@ -129,12 +97,12 @@ class General(commands.Cog):
         embed.set_image(url=banner)
         embed.set_thumbnail(url=avatar)
         embed.set_footer(text=f'ID: {member.id} | {datetime.now().strftime("%a, %#d %b %Y, %I:%M %p")}')
-        await ctx.send(embed=embed)
+        await interaction.send(embed=embed)
 
     #|----------View Guild Information----------|
-    @commands.command(aliases=['guildinfo', 'serverinformation', 'guildinformation'])
-    async def serverinfo(self, ctx):
-        guild = ctx.guild
+    @slash_command("guild_info", "View Information about the current guild.")
+    async def guildinfo(self, interaction: Interaction):
+        guild = interaction.guild
         channels, members, bots = [], [], []
 
         for member in guild.members:
@@ -175,10 +143,4 @@ class General(commands.Cog):
         guildEmbed.set_image(url=guildBanner)
         guildEmbed.set_thumbnail(url=guildAvatar)
         guildEmbed.set_footer(text=f'ID: {guild.id} | {datetime.now().strftime("%a, %#d %b %Y, %I:%M %p")}')
-        await ctx.send(embed=guildEmbed)
-
-    #|----------Listening for messages----------|
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        if message.content == '<@{}>'.format(col['Miumi']['Bot_ID']):
-            await message.channel.send(f"Prefix is `{self.client.command_prefix}`")
+        await interaction.send(embed=guildEmbed)
